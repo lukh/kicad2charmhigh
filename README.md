@@ -12,10 +12,36 @@ The following dependencies are needed :
 * `pyexcel-odsr` for ods, fods files support
 * `pyexcel-xls` for xls, xlsx files support (untested)
 
-You can run `pip3 install pyexcel pyexcel-odsr` to install those dependencies.
+## Installation
+
+The package can be installed via pip (systemwide), or via pipenv or other venv tools (in a virtual environment) (recommanded)
+
+* With pipenv
+
+Choose a location for the venv: 
+> cd /somewhere/on/the/machine
+
+> pipenv install /path/to/Desktop-PickAndPlace-CHMT36VA/KiCad-Conversion/
+
+* With pip
+
+> cd Desktop-PickAndPlace-CHMT36VA/KiCad-Conversion/
+
+Install to the Python user install directory for your platform. Typically ~/.local/, or %APPDATA%\Python on Windows. This path should be added to your PATH to execute the script anywhere.
+
+> pip install --user .
+
+Install on the system (Linux). Use at yout own risk.
+
+> sudo pip install . 
+
 
 ## Usage
-Run `python3 convert.py -h` to get an overview of the command line options.
+
+Run `kicad2charmhigh -h` to get an overview of the command line options.
+
+If you don't want to install as a python package, install the dependencies, and run:
+> `python3 convert.py -h`
 
 ### KiCad export
 As of KiCad v5.1.0 : 
@@ -59,7 +85,7 @@ If everything went well you will get a recap indicating which feeders are used, 
 If the pos file has footprints whose designator starts with FID, these will be detected as fiducials and inserted into the dpv file. If the data is not correct you can still set the calibration data manually from the CharmHigh software.
 
 #### Unassigned components
-There is a command line option to include the components that were not found in the feeders list in the dpv file. You can then assign them later from the Charmhigh software if needed. By default, they are assigned to head 1 and feeder 99 because the Charmhigh software complains with a "file error" when trying to run the job if these values are outside the expected range.
+There is a command line option to include the components that were not found in the feeders list in the dpv file. You can then assign them later from the Charmhigh software if needed, or by filling a cut tape file. By default, they are assigned to head 1 and feeder 99 because the Charmhigh software complains with a "file error" when trying to run the job if these values are outside the expected range.
 
 ### Bottom components
 When a PCB has components on the bottom, the component coordinates must be mirrored and the origin should be the bottom right corner (when viewed from the top).
