@@ -15,11 +15,7 @@ setup(
     name = "kicad2charmhigh",
     version = "0.0.1",
     
-    # packages=find_packages(),
-    # py_modules = ["convert", "Feeder", "FileOperations", "ICTray", "PartPlacement"],
-    package_dir={'kicad2charmhigh': '.'},
-    packages=['kicad2charmhigh'],
-    # package_dir = {'kicad2charmhigh': '.'},
+    packages=find_packages(),
     install_requires=requirements,
     entry_points={
         'console_scripts': [
