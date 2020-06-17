@@ -557,7 +557,7 @@ def generate_bom(output_file, include_unassigned_components):
 def main(component_position_file, feeder_config_file, cuttape_config_file, outfile=None, include_newskip=False, offset=[0, 0], mirror_x=False, board_width=0, bom_output_file=None):
     # basic file verification
     for f in [component_position_file, feeder_config_file]:
-        if not os.path.isfile(f):
+        if f is not None and not os.path.isfile(f):
             print ("ERROR: {} is not an existing file".format(f))
             sys.exit(-1)
 
@@ -569,7 +569,8 @@ def main(component_position_file, feeder_config_file, cuttape_config_file, outfi
         os.makedirs('output', exist_ok=True)
 
     # Load all known feeders from file
-    load_feeder_info_from_file(feeder_config_file)
+    if feeder_config_file is not None:
+        load_feeder_info_from_file(feeder_config_file)
     if cuttape_config_file is not None:
         load_cuttape_info_from_file(cuttape_config_file)
 
@@ -628,7 +629,7 @@ def cli():
     parser.add_argument('component_position_file', type=str, help='KiCAD position file in ASCII')
     parser.add_argument('feeder_config_file', type=str, help='Feeder definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
 
-    parser.add_argument("--cuttape_config_file", type=str, help='Cut Tape Definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
+    parser.add_argument('--feeder-config-file', type=str, help='Feeder definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
 
     parser.add_argument('--output', type=str, help='Output file. If not specified, the position file name is used and the dpv file is created in the output/ folder.')
     parser.add_argument('--bom-file', type=str, help='Output BOM file. Generate a BOM with feeder info / NotMounted')
