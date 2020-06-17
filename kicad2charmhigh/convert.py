@@ -627,21 +627,21 @@ def main(component_position_file, feeder_config_file, cuttape_config_file, outfi
 def cli():
     parser = argparse.ArgumentParser(description='Process pos files from KiCAD to this nice, CharmHigh software')
     parser.add_argument('component_position_file', type=str, help='KiCAD position file in ASCII')
-    parser.add_argument('feeder_config_file', type=str, help='Feeder definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
 
     parser.add_argument('--feeder-config-file', type=str, help='Feeder definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
+    parser.add_argument("--cuttape-config-file", type=str, help='Cut Tape Definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
 
     parser.add_argument('--output', type=str, help='Output file. If not specified, the position file name is used and the dpv file is created in the output/ folder.')
     parser.add_argument('--bom-file', type=str, help='Output BOM file. Generate a BOM with feeder info / NotMounted')
 
-    parser.add_argument('--include_unassigned_components', action="store_true", help='Include in the output file the components not associated to any feeder. By default these components will be assigned to feeder 99 and not placed but can still be manually assigned to a custom tray.')
+    parser.add_argument('--include-unassigned-components', action="store_true", help='Include in the output file the components not associated to any feeder. By default these components will be assigned to feeder 99 and not placed but can still be manually assigned to a custom tray.')
 
     parser.add_argument('--offset', nargs=2, type=float, default=[0, 0], metavar=('x', 'y'), help='Global offset added to every component.')
 
     mirror_group = parser.add_argument_group("Processing bottom component files")
-    mirror_group.add_argument('--mirror_x', action="store_true", help='Mirror components along X axis. Useful when processing a file with components mounted on the bottom.')
+    mirror_group.add_argument('--mirror-x', action="store_true", help='Mirror components along X axis. Useful when processing a file with components mounted on the bottom.')
 
-    mirror_group.add_argument('--board_width', type=float, help='Board width in mm. Use in conjunction with --mirror-x to make sure the components are aligned to the bottom left side.')
+    mirror_group.add_argument('--board-width', type=float, help='Board width in mm. Use in conjunction with --mirror-x to make sure the components are aligned to the bottom left side.')
 
     args = parser.parse_args()
 
