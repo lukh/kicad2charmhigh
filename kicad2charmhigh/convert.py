@@ -92,17 +92,16 @@ def locate_feeder_info(component_ID):
         if component_name == available_feeders[i].device_name:
             return available_feeders[i].feeder_ID
 
-        if component_name in available_feeders[i].aliases:
+        elif component_name in available_feeders[i].aliases:
             return available_feeders[i].feeder_ID
 
 
     # If it's not in the feeders look to see if it's a non-mountable device
     # Get the aliases then split them
-    nonmount_devices = available_feeders[len(available_feeders)-1].aliases.split(':')
+    nonmount_devices = available_feeders[-1].aliases.split(':')
 
-    for i in range(len(nonmount_devices)):
-        if nonmount_devices[i] in component_name:
-            return "NoMount"
+    if component_name in nonmount_devices:
+        return "NoMount"
 
     #If we still can't find it mark it as a new feeder but with skip/don't mount
     return "NewSkip"
@@ -121,9 +120,9 @@ def get_working_name(component_ID):
 
 def get_feeder(feeder_ID):
     # Given the feeder ID, return the associated Feeder object
-    for i in range(len(available_feeders)):
-        if(available_feeders[i].feeder_ID == feeder_ID):
-            return available_feeders[i]
+    for feeder in available_feeders:
+        if(feeder.feeder_ID == feeder_ID):
+            return feeder
     return Feeder()
 
 def load_feeder_info_from_net():
