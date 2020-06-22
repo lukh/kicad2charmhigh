@@ -104,7 +104,7 @@ def load_cuttape_info_from_file(path):
             break # We don't want to read in values after STOP
 
     logging.info("Feeder update complete")
-    return (available_feeders, ic_trays)
+    return [available_feeders, ic_trays]
 
 def load_component_info(component_position_file):
     # Get position info from file
@@ -259,14 +259,13 @@ def configure_log(basepath, basename):
     logger.addHandler(ch)
     logger.addHandler(fh)
 
-def main(component_position_file, feeder_config_file, cuttape_config_file, output_folder=None, include_newskip=False, offset=[0, 0], mirror_x=False, board_width=0, bom_output_file=None):
+def main(component_position_file, feeder_config_file, cuttape_config_files, output_folder=None, include_newskip=False, offset=[0, 0], mirror_x=False, board_width=0, bom_output_file=None):
     logging.getLogger().setLevel(logging.INFO)
     
     # basic file verification
-    for f in [component_position_file, feeder_config_file]:
-        if f is not None and not os.path.isfile(f):
-            logging.error("{} is not an existing file".format(f))
-            sys.exit(-1)
+    if not os.path.isfile(component_position_file):
+        logging.error("{} is not an existing file".format(component_position_file))
+        sys.exit(-1)
 
     if output_folder is None:
         basepath = os.path.dirname(os.path.abspath(component_position_file))
@@ -282,81 +281,97 @@ def main(component_position_file, feeder_config_file, cuttape_config_file, outpu
     outfile_bom = os.path.join(basepath, 'output', "{date}-{basename}-bom.csv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
 
 
+    # Get position info from file
+    components = load_component_info(component_position_file)
+    
+
     # Load all known feeders from file
     if feeder_config_file is not None:
         feeders_info = load_feeder_info_from_file(feeder_config_file)
-    if cuttape_config_file is not None:
-        (cuttape_infos, ic_trays) = load_cuttape_info_from_file(cuttape_config_file)
 
-    feeders = feeders_info + cuttape_infos
+    if cuttape_config_files is not None:
+        feeders_configs = [[os.path.splitext(os.path.basename(cuttape_config_file))[0], load_cuttape_info_from_file(cuttape_config_file)] for cuttape_config_file in cuttape_config_files]
+        feeders_configs[0][0] = "feeders_and_" + feeders_configs[0][0]
+        feeders_configs[0][1][0] = feeders_info + feeders_configs[0][1][0]
+    else:
+        feeders_configs = [["Feeders", [feeders_info, []]]]
 
-    # Get position info from file
-    components = load_component_info(component_position_file)
-    link_components(components, feeders, offset, mirror_x, board_width)
+    for (cuttape_name, (feeders, ic_trays)) in feeders_configs:
+        outfile_dpv = os.path.join(basepath, 'output', "{date}-{basename}-{cuttape_name}.dpv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename, cuttape_name=cuttape_name))
+        outfile_bom = os.path.join(basepath, 'output', "{date}-{basename}-{cuttape_name}-bom.csv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename, cuttape_name=cuttape_name))
 
-    # Detect fiducials in the components list
-    fiducials = find_fiducials(components)
 
-    # Mark all the available feeders that have a component in this design
-    for cmp in components:
+        logging.info("")
+        logging.info("===============================================")
+        logging.info(".............Job: %s..............", cuttape_name)
+        link_components(components, feeders, offset, mirror_x, board_width)
+
+        # Detect fiducials in the components list
+        fiducials = find_fiducials(components)
+
+        # Mark all the available feeders that have a component in this design
+        for cmp in components:
+            for feeder in feeders:
+                if feeder.feeder_ID == cmp.feeder_ID:
+                    feeder.count_in_design += 1
+
+        logging.info("")
+        logging.info("Components to mount:")
+        for comp in [c for c in components if c.feeder_ID not in ['NoMount', 'NewSkip']]:
+            logging.info(comp)
+
+        logging.info("")
+        logging.info("Used Feeders:")
         for feeder in feeders:
-            if feeder.feeder_ID == cmp.feeder_ID:
-                feeder.count_in_design += 1
+            if feeder.count_in_design != 0 and feeder.feeder_ID != "NoMount":
+                logging.info(feeder)
 
-    logging.info("")
-    logging.info("Components to mount:")
-    for comp in [c for c in components if c.feeder_ID not in ['NoMount', 'NewSkip']]:
-        logging.info(comp)
+        logging.info("")
+        logging.info("Fiducials:")
+        for fid in fiducials:
+            logging.info("{}: \t{}\t{}".format(fid.designator, fid.x, fid.y))
 
+
+        # Output to machine recipe file
+        with open(outfile_dpv, 'w', encoding='utf-8', newline='\r\n') as f:
+            add_header(f, outfile_dpv, component_position_file)
+
+            add_feeders(f, feeders)
+
+            add_batch(f)
+
+            add_components(f, components, feeders, include_newskip)
+
+            add_ic_tray(f, ic_trays)
+
+            add_PCB_calibrate(f, fiducials)
+
+            add_fiducials(f, fiducials)
+
+            add_calibration_factor(f)
+
+        logging.info("")
+        logging.info('Wrote output to {}'.format(outfile_dpv))
+
+        if bom_output_file is not None:
+            generate_bom(outfile_bom, components, include_newskip)
+
+        # update components, keeps only unmounted
+        components = [c for c in components if c.feeder_ID in ['NoMount', 'NewSkip']]
 
     logging.info("")
     logging.info("Components Not Mounted:")
-    for comp in [c for c in components if c.feeder_ID in ['NoMount', 'NewSkip']]:
+    for comp in components:
         logging.info(comp)
 
-
-    logging.info("")
-    logging.info("Used Feeders:")
-    for feeder in feeders:
-        if feeder.count_in_design != 0 and feeder.feeder_ID != "NoMount":
-            logging.info(feeder)
-
-    logging.info("")
-    logging.info("Fiducials:")
-    for fid in fiducials:
-        logging.info("{}: \t{}\t{}".format(fid.designator, fid.x, fid.y))
-
-
-    # Output to machine recipe file
-    with open(outfile_dpv, 'w', encoding='utf-8', newline='\r\n') as f:
-        add_header(f, outfile_dpv, component_position_file)
-
-        add_feeders(f, feeders)
-
-        add_batch(f)
-
-        add_components(f, components, feeders, include_newskip)
-
-        add_ic_tray(f, ic_trays)
-
-        add_PCB_calibrate(f, fiducials)
-
-        add_fiducials(f, fiducials)
-
-        add_calibration_factor(f)
-
-    logging.info("")
-    logging.info('Wrote output to {}'.format(outfile_dpv))
-
-    if bom_output_file is not None:
-        generate_bom(outfile_bom, components, include_newskip)
+    
 
 def cli():
     parser = argparse.ArgumentParser(description='Process pos files from KiCAD to this nice, CharmHigh software')
     parser.add_argument('component_position_file', type=str, help='KiCAD position file in ASCII')
 
     parser.add_argument('--feeder-config-file', type=str, help='Feeder definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
-    parser.add_argument("--cuttape-config-file", type=str, help='Cut Tape Definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
+    parser.add_argument("--cuttape-config-files", type=str, nargs='+', help='Cut Tape Definition file(s). Supported file formats : csv, ods, fods, xls, xlsx,...')
 
     parser.add_argument('--output-folder', type=str, help='Output folder. default: $PWD(component-file)/output')
     parser.add_argument('--bom-file', action="store_true", help='Output BOM file. Generate a BOM with feeder info / NotMounted')
@@ -372,7 +387,7 @@ def cli():
 
     args = parser.parse_args()
 
-    main(args.component_position_file, args.feeder_config_file, args.cuttape_config_file, args.output_folder, args.include_unassigned_components, args.offset, args.mirror_x, args.board_width, args.bom_file)
+    main(args.component_position_file, args.feeder_config_file, args.cuttape_config_files, args.output_folder, args.include_unassigned_components, args.offset, args.mirror_x, args.board_width, args.bom_file)
 
 
 if __name__ == '__main__':
