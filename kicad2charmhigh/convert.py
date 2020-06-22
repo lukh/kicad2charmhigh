@@ -309,8 +309,8 @@ def main(component_position_file, feeder_config_file, cuttape_config_file, outfi
 
     print('\nWrote output to {}\n'.format(outfile))
 
-    # if bom_output_file is not None:
-    #     generate_bom(bom_output_file, include_newskip)
+    if bom_output_file is not None:
+        generate_bom(bom_output_file, components, include_newskip)
 
 def cli():
     parser = argparse.ArgumentParser(description='Process pos files from KiCAD to this nice, CharmHigh software')
