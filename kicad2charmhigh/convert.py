@@ -239,7 +239,7 @@ def generate_bom(output_file, components, include_unassigned_components):
     pyexcel.save_as(array=out_array, dest_file_name=output_file)
     print ("Wrote output at {}".format(output_file))
 
-def main(component_position_file, feeder_config_file, cuttape_config_file, outfile=None, include_newskip=False, offset=[0, 0], mirror_x=False, board_width=0, bom_output_file=None):
+def main(component_position_file, feeder_config_file, cuttape_config_file, output_folder=None, include_newskip=False, offset=[0, 0], mirror_x=False, board_width=0, bom_output_file=None):
     # basic file verification
     for f in [component_position_file, feeder_config_file]:
         if f is not None and not os.path.isfile(f):
@@ -247,11 +247,14 @@ def main(component_position_file, feeder_config_file, cuttape_config_file, outfi
             sys.exit(-1)
 
 
-    if outfile is None:
+    if output_folder is None:
+        basepath = os.path.dirname(os.path.abspath(component_position_file))
         basename = os.path.splitext(os.path.basename(component_position_file))[0]
 
-        outfile = os.path.join('output', "{date}-{basename}.dpv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
-        os.makedirs('output', exist_ok=True)
+        os.makedirs(os.path.join(basepath, 'output'), exist_ok=True)
+
+        outfile_dpv = os.path.join(basepath, 'output', "{date}-{basename}.dpv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
+        outfile_bom = os.path.join(basepath, 'output', "{date}-{basename}-bom.csv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
 
     # Load all known feeders from file
     if feeder_config_file is not None:
@@ -290,8 +293,8 @@ def main(component_position_file, feeder_config_file, cuttape_config_file, outfi
             print(feeder)
 
     # Output to machine recipe file
-    with open(outfile, 'w', encoding='utf-8', newline='\r\n') as f:
-        add_header(f, outfile, component_position_file)
+    with open(outfile_dpv, 'w', encoding='utf-8', newline='\r\n') as f:
+        add_header(f, outfile_dpv, component_position_file)
 
         add_feeders(f, feeders)
 
@@ -307,10 +310,10 @@ def main(component_position_file, feeder_config_file, cuttape_config_file, outfi
 
         add_calibration_factor(f)
 
-    print('\nWrote output to {}\n'.format(outfile))
+    print('\nWrote output to {}\n'.format(outfile_dpv))
 
     if bom_output_file is not None:
-        generate_bom(bom_output_file, components, include_newskip)
+        generate_bom(outfile_bom, components, include_newskip)
 
 def cli():
     parser = argparse.ArgumentParser(description='Process pos files from KiCAD to this nice, CharmHigh software')
@@ -319,8 +322,8 @@ def cli():
     parser.add_argument('--feeder-config-file', type=str, help='Feeder definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
     parser.add_argument("--cuttape-config-file", type=str, help='Cut Tape Definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
 
-    parser.add_argument('--output', type=str, help='Output file. If not specified, the position file name is used and the dpv file is created in the output/ folder.')
-    parser.add_argument('--bom-file', type=str, help='Output BOM file. Generate a BOM with feeder info / NotMounted')
+    parser.add_argument('--output-folder', type=str, help='Output folder. default: $PWD(component-file)/output')
+    parser.add_argument('--bom-file', action="store_true", help='Output BOM file. Generate a BOM with feeder info / NotMounted')
 
     parser.add_argument('--include-unassigned-components', action="store_true", help='Include in the output file the components not associated to any feeder. By default these components will be assigned to feeder 99 and not placed but can still be manually assigned to a custom tray.')
 
@@ -333,7 +336,7 @@ def cli():
 
     args = parser.parse_args()
 
-    main(args.component_position_file, args.feeder_config_file, args.cuttape_config_file, args.output, args.include_unassigned_components, args.offset, args.mirror_x, args.board_width, args.bom_file)
+    main(args.component_position_file, args.feeder_config_file, args.cuttape_config_file, args.output_folder, args.include_unassigned_components, args.offset, args.mirror_x, args.board_width, args.bom_file)
 
 
 if __name__ == '__main__':
