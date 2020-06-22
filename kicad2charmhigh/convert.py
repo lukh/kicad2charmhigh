@@ -277,12 +277,11 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
 
     configure_log(basepath, basename)
 
-    outfile_dpv = os.path.join(basepath, 'output', "{date}-{basename}.dpv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
     outfile_bom = os.path.join(basepath, 'output', "{date}-{basename}-bom.csv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
-
 
     # Get position info from file
     components = load_component_info(component_position_file)
+    components_bom = []
     
 
     # Load all known feeders from file
@@ -298,8 +297,6 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
 
     for (cuttape_name, (feeders, ic_trays)) in feeders_configs:
         outfile_dpv = os.path.join(basepath, 'output', "{date}-{basename}-{cuttape_name}.dpv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename, cuttape_name=cuttape_name))
-        outfile_bom = os.path.join(basepath, 'output', "{date}-{basename}-{cuttape_name}-bom.csv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename, cuttape_name=cuttape_name))
-
 
         logging.info("")
         logging.info("===============================================")
@@ -353,16 +350,16 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
         logging.info("")
         logging.info('Wrote output to {}'.format(outfile_dpv))
 
-        if bom_output_file is not None:
-            generate_bom(outfile_bom, components, include_newskip)
-
-        # update components, keeps only unmounted
+        components_bom += [c for c in components if c.feeder_ID not in ['NoMount', 'NewSkip']]
         components = [c for c in components if c.feeder_ID in ['NoMount', 'NewSkip']]
 
     logging.info("")
     logging.info("Components Not Mounted:")
     for comp in components:
         logging.info(comp)
+
+    if bom_output_file is not None:
+        generate_bom(outfile_bom, components_bom + components, include_newskip)
 
     
 
