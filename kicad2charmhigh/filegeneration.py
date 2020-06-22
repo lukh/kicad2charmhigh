@@ -172,7 +172,6 @@ def add_PCB_calibrate(f, fiducials):
     calib_type = 0
     if (len(fiducials) >= 2):
         calib_type = 1
-        print("\nDetected fiducials:")
 
     f.write("PcbCalib,0,{},0,0\n".format(calib_type))
 
@@ -189,7 +188,6 @@ def add_fiducials(f, fiducials):
     if (len(fiducials) >= 2):
         for i in range(min(len(fiducials), 3)):
             f.write("CalibPoint,{},0,{},{},Mark{}\n".format(i, fiducials[i].x, fiducials[i].y, i+1))
-            print("{}: \t{}\t{}".format(fiducials[i].designator, fiducials[i].x, fiducials[i].y))
 
 
 def add_calibration_factor(f):

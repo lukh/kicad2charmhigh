@@ -15,7 +15,7 @@ import re
 import io
 import os
 import argparse
-
+import logging
 
 # Used for pulling data from g spreadsheet
 import csv
@@ -36,7 +36,7 @@ from .PartPlacement import PartPlacement
 def load_feeder_info_from_file(path):
     available_feeders = []
     # Read from local file
-    print('Fetching feeder data from: {}'.format(path))
+    logging.info('Fetching feeder data from: {}'.format(path))
     for row in pyexcel.get_array(file_name=path, start_row=1): # skip header
         if(row[0] != "Stop"):
             # Add a new feeder using these values
@@ -59,16 +59,16 @@ def load_feeder_info_from_file(path):
         else:
             break # We don't want to read in values after STOP
 
-    print("Feeder update complete")
+    logging.info("Feeder update complete")
     return available_feeders
 
 def load_cuttape_info_from_file(path):
     available_feeders = []
     ic_trays = []
     # Read from local file
-    print('Fetching CutTape data from: {}'.format(path))
+    logging.info('Fetching CutTape data from: {}'.format(path))
     for row in pyexcel.get_array(file_name=path, start_row=1): # skip header
-        # print("ID {}, {} columns".format(row[1], len(row)))
+        # logging.info("ID {}, {} columns".format(row[1], len(row)))
         if(row[0] != "Stop"):
         # Append to feeder list
             # Add a new feeder using these values
@@ -103,7 +103,7 @@ def load_cuttape_info_from_file(path):
         else:
             break # We don't want to read in values after STOP
 
-    print("Feeder update complete")
+    logging.info("Feeder update complete")
     return (available_feeders, ic_trays)
 
 def load_component_info(component_position_file):
@@ -205,7 +205,7 @@ def find_fiducials(components):
 def generate_bom(output_file, components, include_unassigned_components):
     # Generate bom file with feeder_ID info
     # Useful to order components not on the machine
-    print ("Building BOM file...")
+    logging.info("Building BOM file...")
     make_reference = lambda c: (c.footprint, c.value, c.feeder_ID)
     c_dict = OrderedDict() # "ref": [c, c, ...]
 
@@ -224,7 +224,7 @@ def generate_bom(output_file, components, include_unassigned_components):
     for c_ref in c_dict:
         comp_list = c_dict[c_ref]
         if not include_unassigned_components and c_ref[2] == "NoMount":
-            print ("Ignoring {} - {}".format(",".join([str(c.designator) for c in comp_list]), c_ref[0]))
+            logging.info("Ignoring {} - {}".format(",".join([str(c.designator) for c in comp_list]), c_ref[0]))
             continue
         if c_ref[2] not in ["NewSkip", "NoMount"]:
             auto_mounted = "True"
@@ -237,24 +237,50 @@ def generate_bom(output_file, components, include_unassigned_components):
         index += 1
 
     pyexcel.save_as(array=out_array, dest_file_name=output_file)
-    print ("Wrote output at {}".format(output_file))
+    logging.info("")
+    logging.info("Wrote output at {}".format(output_file))
+
+
+def configure_log(basepath, basename):
+    output_log = os.path.join(basepath, 'output', "{date}-{basename}.log".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
+    logger = logging.getLogger()
+
+    formatter = logging.Formatter('%(message)s')
+
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter)
+
+    fh = logging.FileHandler(output_log)
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
 
 def main(component_position_file, feeder_config_file, cuttape_config_file, output_folder=None, include_newskip=False, offset=[0, 0], mirror_x=False, board_width=0, bom_output_file=None):
+    logging.getLogger().setLevel(logging.INFO)
+    
     # basic file verification
     for f in [component_position_file, feeder_config_file]:
         if f is not None and not os.path.isfile(f):
-            print ("ERROR: {} is not an existing file".format(f))
+            logging.error("{} is not an existing file".format(f))
             sys.exit(-1)
-
 
     if output_folder is None:
         basepath = os.path.dirname(os.path.abspath(component_position_file))
-        basename = os.path.splitext(os.path.basename(component_position_file))[0]
+    else:
+        basepath = output_folder
 
-        os.makedirs(os.path.join(basepath, 'output'), exist_ok=True)
+    basename = os.path.splitext(os.path.basename(component_position_file))[0]
+    os.makedirs(os.path.join(basepath, 'output'), exist_ok=True)
 
-        outfile_dpv = os.path.join(basepath, 'output', "{date}-{basename}.dpv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
-        outfile_bom = os.path.join(basepath, 'output', "{date}-{basename}-bom.csv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
+    configure_log(basepath, basename)
+
+    outfile_dpv = os.path.join(basepath, 'output', "{date}-{basename}.dpv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
+    outfile_bom = os.path.join(basepath, 'output', "{date}-{basename}-bom.csv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
+
 
     # Load all known feeders from file
     if feeder_config_file is not None:
@@ -277,20 +303,29 @@ def main(component_position_file, feeder_config_file, cuttape_config_file, outpu
             if feeder.feeder_ID == cmp.feeder_ID:
                 feeder.count_in_design += 1
 
-    print("\nComponents to mount:")
+    logging.info("")
+    logging.info("Components to mount:")
     for comp in [c for c in components if c.feeder_ID not in ['NoMount', 'NewSkip']]:
-        print (comp)
+        logging.info(comp)
 
 
-    print("\nComponents Not Mounted:")
+    logging.info("")
+    logging.info("Components Not Mounted:")
     for comp in [c for c in components if c.feeder_ID in ['NoMount', 'NewSkip']]:
-        print (comp)
+        logging.info(comp)
 
 
-    print("\nUsed Feeders:")
+    logging.info("")
+    logging.info("Used Feeders:")
     for feeder in feeders:
         if feeder.count_in_design != 0 and feeder.feeder_ID != "NoMount":
-            print(feeder)
+            logging.info(feeder)
+
+    logging.info("")
+    logging.info("Fiducials:")
+    for fid in fiducials:
+        logging.info("{}: \t{}\t{}".format(fid.designator, fid.x, fid.y))
+
 
     # Output to machine recipe file
     with open(outfile_dpv, 'w', encoding='utf-8', newline='\r\n') as f:
@@ -310,7 +345,8 @@ def main(component_position_file, feeder_config_file, cuttape_config_file, outpu
 
         add_calibration_factor(f)
 
-    print('\nWrote output to {}\n'.format(outfile_dpv))
+    logging.info("")
+    logging.info('Wrote output to {}'.format(outfile_dpv))
 
     if bom_output_file is not None:
         generate_bom(outfile_bom, components, include_newskip)
