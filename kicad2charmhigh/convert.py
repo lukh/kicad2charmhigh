@@ -242,7 +242,7 @@ def generate_bom(output_file, components, include_unassigned_components):
 
 
 def configure_log(basepath, basename):
-    output_log = os.path.join(basepath, 'output', "{date}-{basename}.log".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
+    output_log = os.path.join(basepath, 'output', "{basename}.log".format(basename=basename))
     logger = logging.getLogger()
 
     formatter = logging.Formatter('%(message)s')
@@ -259,7 +259,7 @@ def configure_log(basepath, basename):
     logger.addHandler(ch)
     logger.addHandler(fh)
 
-def main(component_position_file, feeder_config_file, cuttape_config_files, output_folder=None, include_newskip=False, offset=[0, 0], mirror_x=False, board_width=0, bom_output_file=None):
+def main(component_position_file, feeder_config_file, cuttape_config_files, output_folder=None, basename=None, include_newskip=False, offset=[0, 0], mirror_x=False, board_width=0, bom_output_file=None, mounted_list_output=None):
     logging.getLogger().setLevel(logging.INFO)
     
     # basic file verification
@@ -272,12 +272,15 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
     else:
         basepath = output_folder
 
-    basename = os.path.splitext(os.path.basename(component_position_file))[0]
+    if basename is None:
+        basename = "{date}-{basename}".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=os.path.splitext(os.path.basename(component_position_file))[0])
+
     os.makedirs(os.path.join(basepath, 'output'), exist_ok=True)
 
     configure_log(basepath, basename)
 
-    outfile_bom = os.path.join(basepath, 'output', "{date}-{basename}-bom.csv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename))
+    outfile_bom = os.path.join(basepath, 'output', "{basename}-bom.csv".format(basename=basename))
+    mounted_list_output_file = os.path.join(basepath, 'output', "{basename}-mounted-designators.txt".format(basename=basename))
 
     # Get position info from file
     components = load_component_info(component_position_file)
@@ -296,7 +299,7 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
         feeders_configs = [["Feeders", [feeders_info, []]]]
 
     for (cuttape_name, (feeders, ic_trays)) in feeders_configs:
-        outfile_dpv = os.path.join(basepath, 'output', "{date}-{basename}-{cuttape_name}.dpv".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=basename, cuttape_name=cuttape_name))
+        outfile_dpv = os.path.join(basepath, 'output', "{basename}-{cuttape_name}.dpv".format(basename=basename, cuttape_name=cuttape_name))
 
         logging.info("")
         logging.info("===============================================")
@@ -358,10 +361,18 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
     for comp in components:
         logging.info(comp)
 
-    if bom_output_file is not None:
-        generate_bom(outfile_bom, components_bom + components, include_newskip)
+    components_bom += components
 
-    
+    if bom_output_file == True:
+        generate_bom(outfile_bom, components_bom, include_newskip)
+
+    if mounted_list_output == True:
+        with open(mounted_list_output_file, 'w') as mnt_cmp_file :
+            mounted_des_list = [c.designator for c in components_bom if c.feeder_ID not in ['NoMount', 'NewSkip']]
+            mnt_cmp_file.write(",".join(mounted_des_list))
+            mnt_cmp_file.write("\n")
+        logging.info('Wrote output to {}'.format(mounted_list_output_file))
+        
 
 def cli():
     parser = argparse.ArgumentParser(description='Process pos files from KiCAD to this nice, CharmHigh software')
@@ -371,7 +382,11 @@ def cli():
     parser.add_argument("--cuttape-config-files", type=str, nargs='+', help='Cut Tape Definition file(s). Supported file formats : csv, ods, fods, xls, xlsx,...')
 
     parser.add_argument('--output-folder', type=str, help='Output folder. default: $PWD(component-file)/output')
+    parser.add_argument('--basename', type=str, help='basename for output files')
+
     parser.add_argument('--bom-file', action="store_true", help='Output BOM file. Generate a BOM with feeder info / NotMounted')
+    parser.add_argument('--mounted-list-output', action="store_true", help='writes mounted designator in the file, separated by comma')
+
 
     parser.add_argument('--include-unassigned-components', action="store_true", help='Include in the output file the components not associated to any feeder. By default these components will be assigned to feeder 99 and not placed but can still be manually assigned to a custom tray.')
 
@@ -384,7 +399,7 @@ def cli():
 
     args = parser.parse_args()
 
-    main(args.component_position_file, args.feeder_config_file, args.cuttape_config_files, args.output_folder, args.include_unassigned_components, args.offset, args.mirror_x, args.board_width, args.bom_file)
+    main(args.component_position_file, args.feeder_config_file, args.cuttape_config_files, args.output_folder, args.basename, args.include_unassigned_components, args.offset, args.mirror_x, args.board_width, args.bom_file, args.mounted_list_output)
 
 
 if __name__ == '__main__':
