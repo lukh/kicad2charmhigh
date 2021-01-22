@@ -202,45 +202,6 @@ def find_fiducials(components):
     return fiducials
 
 
-def generate_bom(output_file, components, include_unassigned_components):
-    # Generate bom file with feeder_ID info
-    # Useful to order components not on the machine
-    logging.info("Building BOM file...")
-    make_reference = lambda c: (c.footprint, c.value, c.feeder_ID)
-    c_dict = OrderedDict() # "ref": [c, c, ...]
-
-    # group components by value_package
-    for c in components:
-        ref = make_reference(c)
-        if ref not in c_dict:
-            c_dict[ref] = []
-
-        c_dict[ref].append(c)
-
-
-    # build data
-    out_array = [ [ "Id", "Designator", "Package", "Designator/Value", "Quantity", "AutoMounted", "Feeder Type"] ]
-    index = 0
-    for c_ref in c_dict:
-        comp_list = c_dict[c_ref]
-        if not include_unassigned_components and c_ref[2] == "NoMount":
-            logging.info("Ignoring {} - {}".format(",".join([str(c.designator) for c in comp_list]), c_ref[0]))
-            continue
-        if c_ref[2] not in ["NewSkip", "NoMount"]:
-            auto_mounted = "True"
-            feeder_type = "Feeder" if int(c_ref[2]) < 80 else "Cut Tape"
-        else:
-            auto_mounted = "False"
-            feeder_type = ""
-        out_array.append([index, ",".join([str(c.designator) for c in comp_list]), c_ref[0], c_ref[1], len(comp_list), auto_mounted, feeder_type])
-        
-        index += 1
-
-    pyexcel.save_as(array=out_array, dest_file_name=output_file)
-    logging.info("")
-    logging.info("Wrote output at {}".format(output_file))
-
-
 def configure_log(basepath, basename):
     output_log = os.path.join(basepath, 'output', "{basename}.log".format(basename=basename))
     logger = logging.getLogger()
@@ -259,7 +220,7 @@ def configure_log(basepath, basename):
     logger.addHandler(ch)
     logger.addHandler(fh)
 
-def main(component_position_file, feeder_config_file, cuttape_config_files, output_folder=None, basename=None, include_newskip=False, offset=[0, 0], mirror_x=False, board_width=0, bom_output_file=None, mounted_list_output=None):
+def main(component_position_file, feeder_config_file, cuttape_config_files, output_folder=None, basename=None, include_unassigned_components=False, offset=[0, 0], mirror_x=False, board_width=0):
     logging.getLogger().setLevel(logging.INFO)
     
     # basic file verification
@@ -279,8 +240,6 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
 
     configure_log(basepath, basename)
 
-    outfile_bom = os.path.join(basepath, 'output', "{basename}-bom.csv".format(basename=basename))
-    mounted_list_output_file = os.path.join(basepath, 'output', "{basename}-mounted-designators.txt".format(basename=basename))
 
     # Get position info from file
     components = load_component_info(component_position_file)
@@ -340,7 +299,7 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
 
             add_batch(f)
 
-            add_components(f, components, feeders, include_newskip)
+            add_components(f, components, feeders, include_unassigned_components)
 
             add_ic_tray(f, ic_trays)
 
@@ -363,18 +322,8 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
 
     components_bom += components
 
-    if bom_output_file == True:
-        generate_bom(outfile_bom, components_bom, include_newskip)
 
-    if mounted_list_output == True:
-        with open(mounted_list_output_file, 'w') as mnt_cmp_file :
-            mounted_des_list = [c.designator for c in components_bom if c.feeder_ID not in ['NoMount', 'NewSkip']]
-            mnt_cmp_file.write(",".join(mounted_des_list))
-            mnt_cmp_file.write("\n")
-        logging.info('Wrote output to {}'.format(mounted_list_output_file))
-        
-
-def cli():
+def get_args_parser():
     parser = argparse.ArgumentParser(description='Process pos files from KiCAD to this nice, CharmHigh software')
     parser.add_argument('component_position_file', type=str, help='KiCAD position file in ASCII')
 
@@ -383,10 +332,6 @@ def cli():
 
     parser.add_argument('--output-folder', type=str, help='Output folder. default: $PWD(component-file)/output')
     parser.add_argument('--basename', type=str, help='basename for output files')
-
-    parser.add_argument('--bom-file', action="store_true", help='Output BOM file. Generate a BOM with feeder info / NotMounted')
-    parser.add_argument('--mounted-list-output', action="store_true", help='writes mounted designator in the file, separated by comma')
-
 
     parser.add_argument('--include-unassigned-components', action="store_true", help='Include in the output file the components not associated to any feeder. By default these components will be assigned to feeder 99 and not placed but can still be manually assigned to a custom tray.')
 
@@ -397,9 +342,14 @@ def cli():
 
     mirror_group.add_argument('--board-width', type=float, help='Board width in mm. Use in conjunction with --mirror-x to make sure the components are aligned to the bottom left side.')
 
+    return parser
+
+
+def cli():
+    parser = get_args_parser()
     args = parser.parse_args()
 
-    main(args.component_position_file, args.feeder_config_file, args.cuttape_config_files, args.output_folder, args.basename, args.include_unassigned_components, args.offset, args.mirror_x, args.board_width, args.bom_file, args.mounted_list_output)
+    main(args.component_position_file, args.feeder_config_file, args.cuttape_config_files, args.output_folder, args.basename, args.include_unassigned_components, args.offset, args.mirror_x, args.board_width)
 
 
 if __name__ == '__main__':
