@@ -233,10 +233,14 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
     else:
         basepath = output_folder
 
+    if not os.path.isdir(basepath):
+        logging.error("{} is not an existing dir".format(basepath))
+        sys.exit(-1)
+
     if basename is None:
         basename = "{date}-{basename}".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=os.path.splitext(os.path.basename(component_position_file))[0])
 
-    os.makedirs(os.path.join(basepath), exist_ok=True)
+    # os.makedirs(os.path.join(basepath), exist_ok=True)
 
     configure_log(basepath, basename)
 
