@@ -203,7 +203,7 @@ def find_fiducials(components):
 
 
 def configure_log(basepath, basename):
-    output_log = os.path.join(basepath, 'output', "{basename}.log".format(basename=basename))
+    output_log = os.path.join(basepath, "{basename}.log".format(basename=basename))
     logger = logging.getLogger()
 
     formatter = logging.Formatter('%(message)s')
@@ -236,7 +236,7 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
     if basename is None:
         basename = "{date}-{basename}".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=os.path.splitext(os.path.basename(component_position_file))[0])
 
-    os.makedirs(os.path.join(basepath, 'output'), exist_ok=True)
+    os.makedirs(os.path.join(basepath), exist_ok=True)
 
     configure_log(basepath, basename)
 
@@ -258,7 +258,7 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
         feeders_configs = [["Feeders", [feeders_info, []]]]
 
     for (cuttape_name, (feeders, ic_trays)) in feeders_configs:
-        outfile_dpv = os.path.join(basepath, 'output', "{basename}-{cuttape_name}.dpv".format(basename=basename, cuttape_name=cuttape_name))
+        outfile_dpv = os.path.join(basepath, "{basename}-{cuttape_name}.dpv".format(basename=basename, cuttape_name=cuttape_name))
 
         logging.info("")
         logging.info("===============================================")
