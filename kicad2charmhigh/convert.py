@@ -240,8 +240,6 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
     if basename is None:
         basename = "{date}-{basename}".format(date=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), basename=os.path.splitext(os.path.basename(component_position_file))[0])
 
-    # os.makedirs(os.path.join(basepath), exist_ok=True)
-
     configure_log(basepath, basename)
 
 
