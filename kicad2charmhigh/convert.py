@@ -186,6 +186,7 @@ def link_components(components, feeders, offset, mirror_x, board_width):
 
         # Assign pick head, speed and other feeder parameters
         cmp.head = feeder.head
+        cmp.speed = feeder.speed
         cmp.place_component = feeder.place_component
         cmp.check_vacuum = feeder.check_vacuum
         cmp.use_vision = feeder.use_vision
