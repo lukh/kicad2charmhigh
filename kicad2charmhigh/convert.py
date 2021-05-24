@@ -226,7 +226,7 @@ def configure_log(basepath, basename):
     logger.addHandler(ch)
     logger.addHandler(fh)
 
-def main(component_position_file, feeder_config_file, cuttape_config_files, output_folder=None, basename=None, include_unassigned_components=False, offset=[0, 0], mirror_x=False, board_width=0):
+def main(component_position_file, feeder_config_file, cuttape_config_files, output_folder=None, basename=None, include_unassigned_components=False, offset=[0, 0], mirror_x=False, board_width=0, merge_first_tape=False):
     logging.getLogger().setLevel(logging.INFO)
     
     # basic file verification
@@ -268,8 +268,13 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
 
     if cuttape_config_files is not None:
         feeders_configs = [[os.path.splitext(os.path.basename(cuttape_config_file))[0], load_cuttape_info_from_file(cuttape_config_file)] for cuttape_config_file in cuttape_config_files]
-        feeders_configs[0][0] = "feeders_and_" + feeders_configs[0][0]
-        feeders_configs[0][1][0] = feeders_info + feeders_configs[0][1][0]
+        if merge_first_tape:
+            feeders_configs[0][0] = "feeders_and_" + feeders_configs[0][0]
+            feeders_configs[0][1][0] = feeders_info + feeders_configs[0][1][0]
+
+        else:
+            feeders_configs.insert(0, ["Feeders", [feeders_info, []]])
+
     else:
         feeders_configs = [["Feeders", [feeders_info, []]]]
 
