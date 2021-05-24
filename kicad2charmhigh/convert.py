@@ -110,6 +110,7 @@ def load_component_info(component_position_file):
     # Get position info from file
     componentCount = 0
     components = []
+    cmp_not_mounted = []
     with open(component_position_file, encoding='utf-8') as fp:
         line = fp.readline()
 
@@ -126,13 +127,18 @@ def load_component_info(component_position_file):
                     y=stof(token[4]),
                     rotation=stof(token[5])
                     )
-                components.append(cmp)
 
-                
-                componentCount = componentCount + 1
+                if cmp.value.find("/NM") == -1:
+                    components.append(cmp)
+                    componentCount = componentCount + 1
+
+                else:
+                    cmp_not_mounted.append(cmp)
+
+
             line = fp.readline() # Get the next line
 
-    return components
+    return components, cmp_not_mounted
 
 def link_components(components, feeders, offset, mirror_x, board_width):
     for cmp in components:
@@ -244,8 +250,16 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
 
 
     # Get position info from file
-    components = load_component_info(component_position_file)
+    components, cmp_not_mounted = load_component_info(component_position_file)
     components_bom = []
+
+    logging.info("")
+    logging.info("===============================================")
+    logging.info("Ignored Components (containing /NM):")
+    for comp in [c for c in cmp_not_mounted if c.feeder_ID not in ['NoMount', 'NewSkip']]:
+        logging.info(comp)
+    logging.info("")
+    logging.info("")
     
 
     # Load all known feeders from file
