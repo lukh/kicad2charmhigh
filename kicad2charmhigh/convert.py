@@ -197,7 +197,7 @@ def link_components(components, feeders, offset, mirror_x, board_width):
 
         # Add the board width if the file should be mirrored along x
         if (mirror_x):
-            cmp.x = cmp.x + board_width
+            cmp.x = board_width - cmp.x
 
 
 def find_fiducials(components):
