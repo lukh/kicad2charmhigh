@@ -345,8 +345,8 @@ def main(component_position_file, feeder_config_file, cuttape_config_files, outp
     components_bom += components
 
 
-def get_args_parser():
-    parser = argparse.ArgumentParser(description='Process pos files from KiCAD to this nice, CharmHigh software')
+def set_args_parser(parser):
+    # parser = argparse.ArgumentParser(description='Process pos files from KiCAD to this nice, CharmHigh software')
     parser.add_argument('component_position_file', type=str, help='KiCAD position file in ASCII')
 
     parser.add_argument('--feeder-config-file', type=str, help='Feeder definition file. Supported file formats : csv, ods, fods, xls, xlsx,...')
@@ -364,11 +364,10 @@ def get_args_parser():
 
     mirror_group.add_argument('--board-width', type=float, help='Board width in mm. Use in conjunction with --mirror-x to make sure the components are aligned to the bottom left side.')
 
-    return parser
-
 
 def cli():
-    parser = get_args_parser()
+    parser = argparse.ArgumentParser(description='Process pos files from KiCAD to this nice, CharmHigh software')
+    set_args_parser(parser)
     args = parser.parse_args()
 
     main(args.component_position_file, args.feeder_config_file, args.cuttape_config_files, args.output_folder, args.basename, args.include_unassigned_components, args.offset, args.mirror_x, args.board_width)
